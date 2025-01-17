@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\CSVStoreRequest;
 use App\Repositories\CSVRepository;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CSVController extends Controller
@@ -24,11 +26,17 @@ class CSVController extends Controller
 
         try {
             $this->repository->parseCSV($filePath);
+            Log::info('CSV parsed');
+
             return back()->with('success', 'File uploaded successfully');
-        } catch (\InvalidArgumentException $e) {
+        } catch (ValidationException $e) {
+            Log::error($e->getMessage());
+
             return back()->withErrors($e->getMessage());
-        } catch (\ValidationException $e) {
-            return back()->withErrors($e->getMessage());
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+
+            return back()->withErrors('Something went wrong');
         }
     }
 }
