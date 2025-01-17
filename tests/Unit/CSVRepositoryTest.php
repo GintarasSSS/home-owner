@@ -20,21 +20,6 @@ class CSVRepositoryTest extends TestCase
         $this->repository = new CSVRepository();
     }
 
-    public function testItParsesCsvAndReturnsCorrectCollection(): void
-    {
-        $filePath = $this->createTestCSV([
-            [str()->random(10)],
-            ['Mr John Doe'],
-            ['Mrs Jane Smith']
-        ]);
-
-        $result = $this->repository->parseCSV($filePath);
-
-        $this->assertCount(2, $result);
-        $this->assertEquals('Doe', $result->first()['last_name']);
-        $this->assertEquals('Smith', $result->last()['last_name']);
-    }
-
     public function testItThrowsExceptionOnEmptyData(): void
     {
         $filePath = $this->createTestCSV([
@@ -85,9 +70,8 @@ class CSVRepositoryTest extends TestCase
             ['Prof J. Smith'],
         ]);
 
-        $result = $this->repository->parseCSV($filePath);
+        $this->repository->parseCSV($filePath);
 
-        $this->assertCount(4, $result);
         $this->assertDatabaseHas(
             'persons',
             ['title' => 'Dr', 'first_name' => 'John', 'initial' => null, 'last_name' => 'Smith']

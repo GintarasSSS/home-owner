@@ -5,7 +5,6 @@ namespace App\Repositories;
 use App\Interfaces\CSVRepositoryInterface;
 use App\Models\Person;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -18,29 +17,32 @@ class CSVRepository implements CSVRepositoryInterface
         return Person::orderBy('id', 'desc')->paginate(self::PERSONS_PER_PAGE);
     }
 
-    public function parseCSV(string $filePath): Collection
+    public function parseCSV(string $filePath): void
     {
         $rows = array_map('str_getcsv', file($filePath));
         array_shift($rows);
         $data = collect($rows)->map(fn($row) => $row[0]);
+        $validated = [];
 
         if ($data->isEmpty()) {
             throw new \InvalidArgumentException('Invalid data provided.');
         }
 
-        return $data->flatMap(function ($entry) {
-            if (empty($entry)) {
+        $data->each(function ($row) use (&$validated) {
+            if (empty($row)) {
                 throw new \InvalidArgumentException('No data provided.');
             }
 
-            $people = $this->parseName($entry);
+            $people = $this->parseName($row);
 
             foreach ($people as $personData) {
-                $this->validateAndSave($personData);
+                $validated[] = $this->validate($personData);
             }
-
-            return $people;
         });
+
+        if ($validated) {
+            Person::insert($validated);
+        }
     }
 
     private function parseName(string $name): array
@@ -83,7 +85,7 @@ class CSVRepository implements CSVRepositoryInterface
         return preg_split('/\s+/', trim($name));
     }
 
-    private function validateAndSave(array $personData): void
+    private function validate(array $personData): array
     {
         $validator = Validator::make($personData, [
             'title' => 'required|string|max:10',
@@ -96,6 +98,6 @@ class CSVRepository implements CSVRepositoryInterface
             throw new ValidationException($validator);
         }
 
-        Person::create($validator->validated());
+        return $validator->validated();
     }
 }
