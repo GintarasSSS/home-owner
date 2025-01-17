@@ -29,7 +29,7 @@ class CSVControllerTest extends TestCase
         $response = $this->post(route('upload-csv'), ['file' => $file]);
 
         $response->assertRedirect(route('home'));
-        $response->assertSessionHas('success', 'File uploaded successfully');
+        $response->assertSessionHas('success', 'CSV imported: 2 of 2.');
     }
 
     public function testItHandlesUploadOfInvalidCsvFile(): void

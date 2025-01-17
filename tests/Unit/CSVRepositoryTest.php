@@ -3,13 +3,12 @@
 namespace Tests\Unit;
 
 use App\Repositories\CSVRepository;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class CSVRepositoryTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected CSVRepository $repository;
 
@@ -32,7 +31,7 @@ class CSVRepositoryTest extends TestCase
         $this->repository->parseCSV($filePath);
     }
 
-    public function testItThrowsExceptionOnInvalidNameData(): void
+    public function testItInvalidatesRowOnInvalidNameData(): void
     {
         $filePath = $this->createTestCSV([
             [str()->random(10)],
@@ -40,15 +39,19 @@ class CSVRepositoryTest extends TestCase
             ['Mrs']
         ]);
 
-        $this->expectException(ValidationException::class);
+        $result = $this->repository->parseCSV($filePath);
 
-        $this->repository->parseCSV($filePath);
+        $this->assertEquals(['total' => 2, 'imported' => 1], $result);
+        $this->assertDatabaseHas(
+            'persons',
+            ['title' => 'Mr', 'first_name' => 'John', 'initial' => null, 'last_name' => 'Doe']
+        );
     }
 
     /**
      * @dataProvider tooLongNameDataProvider
      */
-    public function testItThrowsExceptionOnTooLongNameData(string $name): void
+    public function testItInvalidatesRowOnTooLongNameData(string $name): void
     {
         $filePath = $this->createTestCSV([
             [str()->random(10)],
@@ -56,9 +59,14 @@ class CSVRepositoryTest extends TestCase
             [$name]
         ]);
 
-        $this->expectException(ValidationException::class);
+        $result = $this->repository->parseCSV($filePath);
 
-        $this->repository->parseCSV($filePath);
+        $this->assertEquals(['total' => 2, 'imported' => 1], $result);
+
+        $this->assertDatabaseHas(
+            'persons',
+            ['title' => 'Mr', 'first_name' => 'John', 'initial' => null, 'last_name' => 'Doe']
+        );
     }
 
     public function testItHandlesComplexNamesAndSavesValidData(): void
@@ -92,7 +100,7 @@ class CSVRepositoryTest extends TestCase
 
     static function tooLongNameDataProvider(): array
     {        return [
-            'title_longer_then_10_chars' => ['name' => str()->random(11)],
+            'title_longer_then_10_chars' => ['name' => str()->random(11) . ' Jane'],
             'name_longer_then_100_chars' => ['name' => 'Mr ' . str()->random(101)],
         ];
     }

@@ -4,5 +4,5 @@ namespace App\Interfaces;
 
 interface CSVRepositoryInterface
 {
-    public function parseCSV(string $filePath): void;
+    public function parseCSV(string $filePath): array;
 }

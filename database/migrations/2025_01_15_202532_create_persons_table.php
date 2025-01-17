@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('initial', 10)->nullable();
             $table->string('last_name', 100)->nullable(false);
             $table->timestamps();
+
+            $table->unique(['title', 'last_name']);
         });
     }
 

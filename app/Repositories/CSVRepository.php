@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Interfaces\CSVRepositoryInterface;
 use App\Models\Person;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -17,32 +18,43 @@ class CSVRepository implements CSVRepositoryInterface
         return Person::orderBy('id', 'desc')->paginate(self::PERSONS_PER_PAGE);
     }
 
-    public function parseCSV(string $filePath): void
+    public function parseCSV(string $filePath): array
     {
         $rows = array_map('str_getcsv', file($filePath));
         array_shift($rows);
         $data = collect($rows)->map(fn($row) => $row[0]);
-        $validated = [];
+        $imported = 0;
+        $total = 0;
 
         if ($data->isEmpty()) {
             throw new \InvalidArgumentException('Invalid data provided.');
         }
 
-        $data->each(function ($row) use (&$validated) {
+        $data->each(function ($row) use (&$imported, &$total) {
             if (empty($row)) {
                 throw new \InvalidArgumentException('No data provided.');
             }
 
             $people = $this->parseName($row);
+            $total += count($people);
 
             foreach ($people as $personData) {
-                $validated[] = $this->validate($personData);
+                try {
+                    $person = $this->validateAndSave($personData);
+
+                    if ($person->wasRecentlyCreated) {
+                        $imported++;
+                    }
+                } catch (\Exception $e) {
+                    Log::info($e->getMessage());
+                }
             }
         });
 
-        if ($validated) {
-            Person::insert($validated);
-        }
+        return [
+            'total' => $total,
+            'imported' => $imported
+        ];
     }
 
     private function parseName(string $name): array
@@ -85,7 +97,7 @@ class CSVRepository implements CSVRepositoryInterface
         return preg_split('/\s+/', trim($name));
     }
 
-    private function validate(array $personData): array
+    private function validateAndSave(array $personData): Person
     {
         $validator = Validator::make($personData, [
             'title' => 'required|string|max:10',
@@ -98,6 +110,22 @@ class CSVRepository implements CSVRepositoryInterface
             throw new ValidationException($validator);
         }
 
-        return $validator->validated();
+        $data = $validator->validated();
+
+        if (empty($data['first_name'])) {
+            unset($data['first_name']);
+        }
+
+        if (empty($data['initial'])) {
+            unset($data['initial']);
+        }
+
+        return Person::updateOrCreate(
+            [
+                'title' => $data['title'],
+                'last_name' => $data['last_name']
+            ],
+            $data
+        );
     }
 }

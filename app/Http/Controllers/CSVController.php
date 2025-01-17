@@ -25,14 +25,16 @@ class CSVController extends Controller
         $filePath = $request->file('file')->getPathname();
 
         try {
-            $this->repository->parseCSV($filePath);
-            Log::info('CSV parsed');
+            $results = $this->repository->parseCSV($filePath);
+            $message = sprintf(
+                'CSV imported: %d of %d.',
+                $results['imported'],
+                $results['total']
+            );
 
-            return back()->with('success', 'File uploaded successfully');
-        } catch (ValidationException $e) {
-            Log::error($e->getMessage());
+            Log::info($message);
 
-            return back()->withErrors($e->getMessage());
+            return back()->with('success', $message);
         } catch (\Exception $e) {
             Log::error($e->getMessage());
 
