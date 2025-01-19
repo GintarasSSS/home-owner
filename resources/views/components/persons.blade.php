@@ -1,6 +1,4 @@
-
     <div class="pt-5">
-
         <table class="table table-striped table-hover">
             <thead>
                 <tr>
