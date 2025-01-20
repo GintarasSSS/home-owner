@@ -99,7 +99,8 @@ class CSVRepositoryTest extends TestCase
     }
 
     static function tooLongNameDataProvider(): array
-    {        return [
+    {        
+        return [
             'title_longer_then_10_chars' => ['name' => str()->random(11) . ' Jane'],
             'name_longer_then_100_chars' => ['name' => 'Mr ' . str()->random(101)],
         ];
